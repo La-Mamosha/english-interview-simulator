@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Entrevista - Con Rúbrica Oficial</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 750px;
+            width: 100%;
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        h1 { color: #38bdf8; text-align: center; margin-bottom: 5px; font-size: 24px; }
+        .subtitle { text-align: center; color: #94a3b8; margin-bottom: 25px; font-size: 14px; }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            font-weight: bold;
+        }
+        .btn-blue { background-color: #0284c7; }
+        .btn-blue:hover { background-color: #0369a1; }
+        .btn-green { background-color: #10b981; }
+        .btn-green:hover { background-color: #059669; }
+        .btn-dark { background-color: #475569; }
+        .btn-dark:hover { background-color: #334155; }
+
+        .btn-action { width: auto; padding: 5px 10px; font-size: 12px; margin-right: 5px; margin-top: 5px;}
+        .btn-edit { background-color: #d97706; }
+        .btn-delete { background-color: #dc2626; }
+        
+        .box {
+            background: #334155;
+            border-left: 5px solid #38bdf8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+        .question-title { font-weight: bold; color: #38bdf8; margin-bottom: 5px; }
+        .question-text { font-size: 16px; color: #e2e8f0; line-height: 1.6; }
+        
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 12px;
+            background: #334155;
+            color: #f8fafc;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            resize: vertical;
+            box-sizing: border-box;
+            font-size: 15px;
+            margin-bottom: 10px;
+        }
+        textarea::placeholder { color: #94a3b8; }
+        
+        .history {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px dashed #475569;
+        }
+        .history-item {
+            background: #1e293b;
+            border: 1px solid #475569;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        
+        .rubric-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .rubric-table th, .rubric-table td {
+            border: 1px solid #475569;
+            padding: 6px 10px;
+            text-align: left;
+        }
+        .rubric-table th { background-color: #334155; color: #38bdf8; }
+        
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .badge-expert { background-color: #065f46; color: #34d399; }
+        .badge-competent { background-color: #1e3a8a; color: #60a5fa; }
+        .badge-elemental { background-color: #78350f; color: #fbbf24; }
+        .badge-inicial { background-color: #7f1d1d; color: #f87171; }
+
+        .total-score {
+            font-size: 18px;
+            font-weight: bold;
+            color: #34d399;
+            margin-bottom: 10px;
+            background: #065f4633;
+            padding: 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Simulador de Entrevista con Rúbrica Oficial</h1>
+    <p class="subtitle">Evaluación en base a tus criterios institucionales de evaluación</p>
+    
+    <button class="btn btn-blue" onclick="loadRandomSet()">🎲 Generar Set de Preguntas Aleatorio</button>
+    
+    <div class="box">
+        <div class="question-title" id="set-title">Presiona el botón superior</div>
+        <div id="question-display" class="question-text">Las preguntas de la prueba aparecerán aquí...</div>
+    </div>
+
+    <label style="font-weight: bold; color:#38bdf8;" for="answer">Tu Respuesta (en Inglés):</label>
+    <textarea id="answer" placeholder="Escribe o dicta tu respuesta combinando rasgos de tu personalidad, habilidades, estudios o experiencia laboral..."></textarea>
+    
+    <button class="btn btn-dark" onclick="submitAnswer()">📤 Enviar y Evaluar según Rúbrica</button>
+    <button class="btn btn-green" id="mic-btn" onclick="toggleListening()">🎤 Hablar (Usar Micrófono)</button>
+
+    <div class="history">
+        <h3>Resultados y Calificaciones Obtenidas:</h3>
+        <div id="history-log"><i>Aún no has enviado respuestas en esta sesión para evaluar.</i></div>
+    </div>
+</div>
+
+<script>
+    // 15 Sets del documento original
+    const interviewSets = [
+        { id: 1, questions: ["Tell me about yourself.", "What interests you about this role?", "What is your greatest weakness?", "OPTIONAL: What is your ideal work environment?", "Do you have any questions for us?"] },
+        { id: 3, questions: ["Can you tell me about yourself?", "Where do you see yourself in five years?", "What are your biggest strengths?", "OPTIONAL: What do you know about our company?", "Do you have any questions for us?"] },
+        { id: 5, questions: ["Tell me about yourself.", "What are your biggest strengths?", "What is your ideal or preferred work environment?", "OPTIONAL: Why do you want to work here?", "Do you have any questions for us?"] },
+        { id: 7, questions: ["Can you tell me about yourself?", "Where do you see yourself in five years?", "What are your biggest weaknesses?", "OPTIONAL: Why should we hire you?", "Do you have any questions for us?"] },
+        { id: 9, questions: ["Can you tell me about yourself?", "What is your ideal or preferred working environment?", "Why should we hire you?", "OPTIONAL: What are your biggest strengths?", "Do you have any questions for us?"] },
+        { id: 11, questions: ["Tell me about yourself.", "What are your career goals?", "Why are interested in our company?", "OPTIONAL: What are your biggest weaknesses?", "Do you have any questions for us?"] },
+        { id: 13, questions: ["Tell me about yourself.", "Where do you see yourself in five years?", "How do you prioritize work?", "OPTIONAL: What are your biggest strengths?", "Do you have any questions for us?"] },
+        { id: 15, questions: ["Tell me about yourself.", "What are your strengths?", "Why are you interested in our company?", "OPTIONAL: Where do you see yourself in five years?", "Do you have any questions for us?"] }
+    ];
+
+    let currentSet = null;
+    let recognition;
+    let isListening = false;
+    let savedAnswers = [];
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.lang = 'en-US'; 
+        recognition.onresult = (event) => {
+            const resultText = event.results[event.results.length - 1][0].transcript;
+            document.getElementById('answer').value += resultText + " ";
+        };
+    }
+
+    function loadRandomSet() {
+        const randomIndex = Math.floor(Math.random() * interviewSets.length);
+        currentSet = interviewSets[randomIndex];
+        document.getElementById('set-title').innerText = `STUDENT SET N° ${currentSet.id}`;
+        const questionsHtml = currentSet.questions.map((q, i) => `${i+1}. ${q}`).join('<br>');
+        document.getElementById('question-display').innerHTML = questionsHtml;
+        document.getElementById('answer').value = ""; 
+    }
+
+    // --- Motor de Calificación por Rúbrica Oficial ---
+    function evaluateRubric(text) {
+        let t = text.toLowerCase();
+        let results = [];
+        let totalPoints = 0;
+
+        // Vocabulario de Personalidad común
+        const personalityWords = ['responsible', 'organized', 'proactive', 'punctual', 'creative', 'flexible', 'committed', 'honest'];
+        // Vocabulario de Habilidades común
+        const skillsWords = ['teamwork', 'leadership', 'communication', 'problem-solving', 'adaptability', 'analytical', 'manage'];
+        // Vocabulario Trayectoria y Academia
+        const careerWords = ['experience', 'worked', 'job', 'position', 'company', 'tasks', 'projects', 'field'];
+        const academicWords = ['studied', 'university', 'degree', 'course', 'learned', 'education', 'graduate', 'college'];
+        
+        // Conectores temporales (Presente, Pasado, Futuro)
+        const pastIndicators = ['worked', 'studied', 'was', 'did', 'managed', 'in 20', 'ago', 'previous'];
+        const presentIndicators = ['currently', 'now', 'am working', 'study', 'at the moment', 'present'];
+        const futureIndicators = ['will', 'going to', 'would like', 'in five years', 'my goal', 'aim to', 'hope to'];
+
+        // 1. Personalidad (Máx 15p)
+        let perScore = 3; let perName = "Inicial"; let perBadge = "badge-inicial";
+        let perCount = personalityWords.filter(w => t.includes(w)).length;
+        if (perCount >= 2 && text.length > 40) { perScore = 15; perName = "Experto"; perBadge = "badge-expert"; }
+        else if (perCount >= 1) { perScore = 12; perName = "Competente"; perBadge = "badge-competent"; }
+        else if (text.length > 15) { perScore = 9; perName = "Elemental"; perBadge = "badge-elemental"; }
+        results.push({ criterion: "3.1.1.I.1 Personalidad", score: perScore, level: perName, badge: perBadge });
+        totalPoints += perScore;
+
+        // 2. Habilidades (Máx 15p)
+        let skiScore = 3; let skiName = "Inicial"; let skiBadge = "badge-inicial";
+        let skiCount = skillsWords.filter(w => t.includes(w)).length;
+        if (skiCount >= 2 && text.length > 40) { skiScore = 15; skiName = "Experto"; skiBadge = "badge-expert"; }
+        else if (skiCount >= 1) { skiScore = 12; skiName = "Competente"; skiBadge = "badge-competent"; }
+        else if (text.length > 15) { skiScore = 9; skiName = "Elemental"; skiBadge = "badge-elemental"; }
+        results.push({ criterion: "3.1.1.I.2 Habilidades", score: skiScore, level: skiName, badge: skiBadge });
+        totalPoints += skiScore;
+
+        // 3. Trayectoria Laboral (Máx 15p)
+        let carScore = 3; let carName = "Inicial"; let carBadge = "badge-inicial";
+        let carCount = careerWords.filter(w => t.includes(w)).length;
+        if (carCount >= 2) { carScore = 15; carName = "Experto"; carBadge = "badge-expert"; }
+        else if (carCount == 1) { carScore = 12; carName = "Competente"; carBadge = "badge-competent"; }
+        else if (text.length > 20) { carScore = 9; carName = "Elemental"; carBadge = "badge-elemental"; }
+        results.push({ criterion: "3.1.2.I.3 Trayectoria Laboral", score: carScore, level: carName, badge: carBadge });
+        totalPoints += carScore;
+
+        // 4. Justificación Léxico Gramatical Trayectoria (Máx 15p)
+        let jcaScore = 3; let jcaName = "Inicial"; let jcaBadge = "badge-inicial";
+        let hasPast = pastIndicators.some(w => t.includes(w));
+        let hasPres = presentIndicators.some(w => t.includes(w));
+        let hasFut  = futureIndicators.some(w => t.includes(w));
+        let timeCount = (hasPast?1:0) + (hasPres?1:0) + (hasFut?1:0);
+        if (timeCount >= 3) { jcaScore = 15; jcaName = "Experto"; jcaBadge = "badge-expert"; }
+        else if (timeCount == 2) { jcaScore = 12; jcaName = "Competente"; jcaBadge = "badge-competent"; }
+        else if (timeCount == 1) { jcaScore = 9; jcaName = "Elemental"; jcaBadge = "badge-elemental"; }
+        results.push({ criterion: "3.1.2.I.4 Gramática Trayectoria (Pres/Pas/Fut)", score: jcaScore, level: jcaName, badge: jcaBadge });
+        totalPoints += jcaScore;
+
+        // 5. Experiencia Académica (Máx 15p)
+        let acaScore = 3; let acaName = "Inicial"; let acaBadge = "badge-inicial";
+        let acaCount = academicWords.filter(w => t.includes(w)).length;
+        if (acaCount >= 2) { acaScore = 15; acaName = "Experto"; acaBadge = "badge-expert"; }
+        else if (acaCount == 1) { acaScore = 12; acaName = "Competente"; acaBadge = "badge-competent"; }
+        else if (text.length > 20) { acaScore = 9; acaName = "Elemental"; acaBadge = "badge-elemental"; }
+        results.push({ criterion: "3.1.5.I.5 Exp. Académica", score: acaScore, level: acaName, badge: acaBadge });
+        totalPoints += acaScore;
+
+        // 6. Justificación Léxico Gramatical Académica (Máx 15p)
+        let jgaScore = 3; let jgaName = "Inicial"; let jgaBadge = "badge-inicial";
+        if (timeCount >= 3) { jgaScore = 15; jgaName = "Experto"; jgaBadge = "badge-expert"; }
+        else if (timeCount == 2) { jgaScore = 12; jgaName = "Competente"; jgaBadge = "badge-competent"; }
+        else if (timeCount == 1) { jgaScore = 9; jgaName = "Elemental"; jgaBadge = "badge-elemental"; }
+        results.push({ criterion: "3.1.5.I.6 Gramática Académica (Pres/Pas/Fut)", score: jgaScore, level: jgaName, badge: jgaBadge });
+        totalPoints += jgaScore;
+
+        // 7. Fluidez y Extensión (Comunica Efectivamente) (Máx 10p)
+        let fluScore = 2; let fluName = "Inicial"; let fluBadge = "badge-inicial";
+        let wordCount = text.split(/\s+/).length;
+        if (wordCount > 40) { fluScore = 10; fluName = "Experto"; fluBadge = "badge-expert"; }
+        else if (wordCount > 25) { fluScore = 8; fluName = "Competente"; fluBadge = "badge-competent"; }
+        else if (wordCount > 10) { fluScore = 6; fluName = "Elemental"; fluBadge = "badge-elemental"; }
+        results.push({ criterion: "3.1.5.I.7 Fluidez y Extensión del mensaje", score: fluScore, level: fluName, badge: fluBadge });
+        totalPoints += fluScore;
+
+        // Alertas de errores comunes de hispanohablantes
+        let alertNotes = "";
+        if (t.includes("i have 2") || t.includes("i have 3") || t.includes("i have 1")) alertNotes += "⚠️ Cuidado: No uses 'I have X years' para la edad, recuerda usar 'I am X years old'.<br>";
+        if (t.includes("i am agree")) alertNotes += "⚠️ Corrección: En lugar de 'I am agree', utiliza la forma correcta 'I agree'.<br>";
+        if (t.includes("the people is")) alertNotes += "⚠️ Error: Recuerda que 'People' es plural, debe ser 'People are'.<br>";
+
+        return { totalPoints, breakDown: results, alertNotes };
+    }
+
+    function submitAnswer() {
+        const text = document.getElementById('answer').value.trim();
+        if(!text) { alert("Ingresa texto antes de evaluar."); return; }
+
+        const evaluation = evaluateRubric(text);
+        
+        const newAnswer = {
+            id: Date.now(),
+            setContext: currentSet ? `Set ${currentSet.id}` : "Práctica Abierta",
+            text: text,
+            evaluation: evaluation
+        };
+
+        savedAnswers.push(newAnswer);
+        renderHistory();
+        document.getElementById('answer').value = "";
+        stopListening();
+    }
+
+    function deleteAnswer(id) {
+        savedAnswers = savedAnswers.filter(ans => ans.id !== id);
+        renderHistory();
+    }
+
+    function editAnswer(id) {
+        const item = savedAnswers.find(ans => ans.id === id);
+        if(item) {
+            document.getElementById('answer').value = item.text;
+            savedAnswers = savedAnswers.filter(ans => ans.id !== id);
+            renderHistory();
+        }
+    }
+
+    function renderHistory() {
+        const log = document.getElementById('history-log');
+        if(savedAnswers.length === 0) {
+            log.innerHTML = '<i>Aún no has enviado respuestas en esta sesión para evaluar.</i>';
+            return;
+        }
+
+        log.innerHTML = "";
+        savedAnswers.forEach(ans => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            
+            let tableRows = ans.evaluation.breakDown.map(row => `
+                <tr>
+                    <td>${row.criterion}</td>
+                    <td><span class="badge ${row.badge}">${row.level}</span></td>
+                    <td><strong>${row.score} pts</strong></td>
+                </tr>
+            `).join('');
+
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #475569; padding-bottom: 8px; margin-bottom: 10px;">
+                    <strong>📝 Intento - ${ans.setContext}</strong>
+                    <div>
+                        <button class="btn btn-action btn-edit" onclick="editAnswer(${ans.id})">✏️ Editar</button>
+                        <button class="btn btn-action btn-delete" onclick="deleteAnswer(${ans.id})">🗑️ Eliminar</button>
+                    </div>
+                </div>
+                <p style="font-style: italic; color: #cbd5e1; font-size: 14px;">"${ans.text}"</p>
+                
+                <div class="total-score">Puntaje Total Estimado: ${ans.evaluation.totalPoints} / 100 puntos</div>
+                
+                ${ans.evaluation.alertNotes ? `<div style="background: #7f1d1d33; border-left: 4px solid #ef4444; padding: 10px; margin: 10px 0; border-radius: 4px; font-size: 13px; color: #f87171;">${ans.evaluation.alertNotes}</div>` : ''}
+
+                <table class="rubric-table">
+                    <thead>
+                        <tr>
+                            <th>Criterio Evaluado</th>
+                            <th>Nivel</th>
+                            <th>Puntaje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            `;
+            log.appendChild(div);
+        });
+    }
+
+    function toggleListening() {
+        if (!recognition) { alert("Tu navegador no soporta voz. Usa Google Chrome."); return; }
+        if (!isListening) {
+            recognition.start();
+            isListening = true;
+            document.getElementById('mic-btn').innerText = "🛑 Detener y Procesar Audio";
+            document.getElementById('mic-btn').style.backgroundColor = "#dc2626";
+        } else {
+            stopListening();
+        }
+    }
+
+    function stopListening() {
+        if(recognition && isListening) {
+            recognition.stop();
+            isListening = false;
+            document.getElementById('mic-btn').innerText = "🎤 Hablar (Usar Micrófono)";
+            document.getElementById('mic-btn').style.backgroundColor = "#10b981";
+        }
+    }
+</script>
+
+</body>
+</html>
